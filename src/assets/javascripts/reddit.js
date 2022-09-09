@@ -8,28 +8,24 @@ import { FrontEnd } from "./frontend.js"
 export default await FrontEnd({
 	enable: true,
 	name: "reddit",
-	frontends: {
-		libreddit: {
-			cookies: ["theme", "front_page", "layout", "wide", "post_sort", "comment_sort", "show_nsfw", "autoplay_videos", "use_hls", "hide_hls_notification", "subscriptions", "filters"],
-		},
-		teddit: {
-			cookies: [
-				"collapse_child_comments",
-				"domain_instagram",
-				"domain_twitter",
-				"domain_youtube",
-				"flairs",
-				"highlight_controversial",
-				"nsfw_enabled",
-				"post_media_max_height",
-				"show_upvoted_percentage",
-				"show_upvotes",
-				"theme",
-				"videos_muted",
-			],
-		},
+	frontends: ["libreddit", "teddit"],
+	cookies: {
+		libreddit: ["theme", "front_page", "layout", "wide", "post_sort", "comment_sort", "show_nsfw", "autoplay_videos", "use_hls", "hide_hls_notification", "subscriptions", "filters"],
+		teddit: [
+			"collapse_child_comments",
+			"domain_instagram",
+			"domain_twitter",
+			"domain_youtube",
+			"flairs",
+			"highlight_controversial",
+			"nsfw_enabled",
+			"post_media_max_height",
+			"show_upvoted_percentage",
+			"show_upvotes",
+			"theme",
+			"videos_muted",
+		],
 	},
-	frontend: "libreddit",
 	redirect: (url, type, frontend) => {
 		const targets = [/^https?:\/{2}(www\.|old\.|np\.|new\.|amp\.|)reddit\.com/, /^https?:\/{2}(i\.|preview\.)redd\.it/]
 		if (!targets.some(rx => rx.test(url.href))) return

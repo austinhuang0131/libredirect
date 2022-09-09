@@ -1,22 +1,22 @@
 window.browser = window.browser || window.chrome
-import twitterHelper from "./twitter.js"
-import youtubeHelper from "./youtube/youtube.js"
-import instagramHelper from "./instagram.js"
-import mediumHelper from "./medium.js"
+import Twitter from "./twitter.js"
+import Youtube from "./youtube.js"
+import Instagram from "./instagram.js"
+import Medium from "./medium.js"
 import Reddit from "./reddit.js"
-import searchHelper from "./search.js"
-import translateHelper from "./translate/translate.js"
-import wikipediaHelper from "./wikipedia.js"
-import peertubeHelper from "./peertube.js"
-import lbryHelper from "./lbry.js"
-import sendTargetsHelper from "./sendTargets.js"
-import tiktokHelper from "./tiktok.js"
-import quoraHelper from "./quora.js"
-import libremdbHelper from "./imdb.js"
-import imgurHelper from "./imgur.js"
-import reutersHelper from "./reuters.js"
-import youtubeMusicHelper from "./youtubeMusic.js"
-import mapsHelper from "./maps.js"
+import Search from "./search.js"
+import Translate from "./translate.js"
+import Wikipedia from "./wikipedia.js"
+import Peertube from "./peertube.js"
+import Lbry from "./lbry.js"
+import SendTargets from "./sendTargets.js"
+import Tiktok from "./tiktok.js"
+import Quora from "./quora.js"
+import Imdb from "./imdb.js"
+import Imgur from "./imgur.js"
+import Reuters from "./reuters.js"
+import YoutubeMusic from "./youtubeMusic.js"
+import Maps from "./maps.js"
 import localise from "./localise.js"
 
 function getRandomInstance(instances) {
@@ -89,14 +89,10 @@ function updateInstances() {
 			}
 		}
 		const blackList = await updateBlackList()
-		const instances = JSON.parse(http.responseText)
+		const list = JSON.parse(http.responseText)
 
-		await youtubeHelper.setRedirects({
-			invidious: instances.invidious,
-			piped: instances.piped,
-			pipedMaterial: instances.pipedMaterial,
-			cloudtube: instances.cloudtube,
-		})
+		await youtubeHelper.setRedirects(list, blackList)
+
 		await twitterHelper.setRedirects(instances.nitter)
 		await instagramHelper.setRedirects(instances.bibliogram)
 		await Reddit.setRedirects({
@@ -361,69 +357,31 @@ async function testLatency(element, instances, frontend) {
 	})
 }
 
-function copyCookie(frontend, targetUrl, urls, name) {
+function copyCookie(targetUrl, urls, name) {
 	return new Promise(resolve => {
-		browser.storage.local.get("firstPartyIsolate", r => {
-			let query
-			if (!r.firstPartyIsolate)
-				query = {
-					url: protocolHost(targetUrl),
-					name: name,
-				}
-			else
-				query = {
-					url: protocolHost(targetUrl),
-					name: name,
-					firstPartyDomain: null,
-				}
-			browser.cookies.getAll(query, async cookies => {
-				for (const cookie of cookies)
+		browser.cookies.getAll(
+			{
+				url: protocolHost(targetUrl),
+				name: name,
+			},
+			async cookies => {
+				for (const cookie of cookies) {
 					if (cookie.name == name) {
 						for (const url of urls) {
-							const setQuery = r.firstPartyIsolate
-								? {
-										url: url,
-										name: name,
-										value: cookie.value,
-										secure: true,
-										firstPartyDomain: new URL(url).hostname,
-								  }
-								: {
-										url: url,
-										name: name,
-										value: cookie.value,
-										secure: true,
-										expirationDate: cookie.expirationDate,
-								  }
-							browser.cookies.set(setQuery)
+							browser.cookies.set({
+								url: url,
+								name: name,
+								value: cookie.value,
+								secure: true,
+								expirationDate: cookie.expirationDate,
+							})
 						}
 						break
 					}
+				}
 				resolve()
-			})
-		})
-	})
-}
-
-function getPreferencesFromToken(frontend, targetUrl, urls, name, endpoint) {
-	return new Promise(resolve => {
-		browser.storage.local.get("firstPartyIsolate", r => {
-			const http = new XMLHttpRequest()
-			const url = `${targetUrl}${endpoint}`
-			http.open("GET", url, false)
-			http.setRequestHeader("Cookie", `${name}=${cookie.value}`)
-			http.send(null)
-			const preferences = JSON.parse(http.responseText)
-			let formdata = new FormData()
-			for (var key in preferences) formdata.append(key, preferences[key])
-			for (const url of urls) {
-				const http = new XMLHttpRequest()
-				http.open("POST", `${url}/settings/stay`, false)
-				http.send(null)
 			}
-			resolve()
-			return
-		})
+		)
 	})
 }
 
@@ -440,13 +398,10 @@ function copyRaw(test, copyRawElement) {
 					return
 				}
 
-				let newUrl = await youtubeHelper.reverse(url)
-				if (!newUrl) newUrl = await twitterHelper.reverse(url)
-				if (!newUrl) newUrl = await instagramHelper.reverse(url)
-				if (!newUrl) newUrl = await tiktokHelper.reverse(url)
-				if (!newUrl) newUrl = await quoraHelper.reverse(url)
-				if (!newUrl) newUrl = await libremdbHelper.reverse(url)
-				if (!newUrl) newUrl = await imgurHelper.reverse(url)
+				let newUrl
+				for (const frontend of [Youtube, Twitter, Instagram, Tiktok, Quora, Imdb, Imgur]) {
+					if (!newUrl) newUrl = await frontend.reverse(url)
+				}
 
 				if (newUrl) {
 					resolve(newUrl)
@@ -478,20 +433,10 @@ function unify(test) {
 					return
 				}
 
-				let result = await youtubeHelper.copyPasteInvidiousCookies(test, url)
-				if (!result) result = await youtubeHelper.copyPastePipedLocalStorage(test, url, currTab.id)
-				if (!result) result = await youtubeHelper.copyPastePipedMaterialLocalStorage(test, url, currTab.id)
-
-				if (!result) result = await twitterHelper.initNitterCookies(test, url)
-				if (!result) result = await Reddit.unify(test, url)
-				if (!result) result = await searchHelper.initSearxCookies(test, url)
-				if (!result) result = await searchHelper.initSearxngCookies(test, url)
-				if (!result) result = await searchHelper.initLibrexCookies(test, url)
-				if (!result) result = await tiktokHelper.initProxiTokCookies(test, url)
-				if (!result) result = await wikipediaHelper.initWikilessCookies(test, url)
-				if (!result) result = await translateHelper.copyPasteSimplyTranslateCookies(test, url)
-				if (!result) result = await translateHelper.copyPasteLingvaLocalStorage(test, url)
-				if (!result) result = await instagramHelper.initBibliogramPreferences(test, url)
+				let result
+				for (const frontend of [Youtube, Twitter, Reddit, Search, Tiktok, Wikipedia, Translate, Instagram]) {
+					if (!result) result = await frontend.unify(url, currTab.id, test)
+				}
 
 				resolve(result)
 			}
@@ -511,27 +456,18 @@ function switchInstance(test) {
 					resolve()
 					return
 				}
-				let newUrl = await youtubeHelper.switchInstance(url, true)
-				if (!newUrl) newUrl = await twitterHelper.switchInstance(url, true)
-				if (!newUrl) newUrl = await instagramHelper.switchInstance(url, true)
-				if (!newUrl) newUrl = Reddit.switch(url, true)
-				if (!newUrl) newUrl = await searchHelper.switchInstance(url, true)
-				if (!newUrl) newUrl = await translateHelper.switchInstance(url, true)
-				if (!newUrl) newUrl = await mediumHelper.switchInstance(url, true)
-				if (!newUrl) newUrl = await quoraHelper.switchInstance(url, true)
-				if (!newUrl) newUrl = await libremdbHelper.switchInstance(url, true)
-				if (!newUrl) newUrl = await tiktokHelper.switchInstance(url, true)
-				if (!newUrl) newUrl = await sendTargetsHelper.switchInstance(url, true)
-				if (!newUrl) newUrl = await peertubeHelper.switchInstance(url, true)
-				if (!newUrl) newUrl = await lbryHelper.switchInstance(url, true)
-				if (!newUrl) newUrl = await imgurHelper.switchInstance(url, true)
-				if (!newUrl) newUrl = await wikipediaHelper.switchInstance(url, true)
-				if (!newUrl) newUrl = await youtubeMusicHelper.switchInstance(url, true)
+
+				let newUrl
+				for (const frontend of [Youtube, YoutubeMusic, Twitter, Instagram, Reddit, Search, Translate, Maps, Wikipedia, Medium, Quora, Imdb, Reuters, Imgur, Tiktok, SendTargets, Peertube, Lbry]) {
+					if (!newUrl) newUrl = frontend.switch(url, true)
+				}
 
 				if (newUrl) {
 					if (!test) browser.tabs.update({ url: newUrl })
 					resolve(true)
-				} else resolve()
+				} else {
+					resolve()
+				}
 			}
 		})
 	})
@@ -565,7 +501,6 @@ export default {
 	processDefaultCustomInstances,
 	latency,
 	copyCookie,
-	getPreferencesFromToken,
 	switchInstance,
 	copyRaw,
 	unify,

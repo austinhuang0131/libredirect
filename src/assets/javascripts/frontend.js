@@ -4,34 +4,49 @@ window.browser = window.browser || window.chrome
 
 import utils from "./utils.js"
 
-export async function FrontEnd({ name, enable, frontends, frontend, redirect, reverse }) {
-	let these = {}
-	these.redirects = {}
-	these.enable = enable
-	these.frontend = frontend
-	these.protocol = "normal"
-	these.name = name
-	these.protocolFallback = true
-	these.redirectType = "both"
+export async function FrontEnd({ name, enable, frontends, redirect, reverse, cookies, localStorage }) {
+	let these = {
+		enable: enable,
+		redirects: {},
+		frontend: frontends[0],
+		protocol: "normal",
+		protocolFallback: true,
+		redirectType: "both",
+		name: name,
+		cookies: cookies ?? [],
+		localStorage: localStorage ?? [],
+		set enable(val) {
+			these.enable = val
+			setVar("enable", val)
+		},
+		set frontend(val) {
+			these.frontend = val
+			setVar("frontend", val)
+		},
+		set protocol(val) {
+			these.protocol = val
+			setVar("protocol", val)
+		},
+		set protocolFallback(val) {
+			these.protocolFallback = val
+			setVar("protocolFallback", val)
+		},
+		set redirectType(val) {
+			these.redirectType = val
+			setVar("redirectType", val)
+		},
+		set redirects(val) {
+			these.redirects = val
+			setVar("redirects", val)
+		},
+	}
 
-	let init = () => {
-		return new Promise(async resolve =>
-			browser.storage.local.get(these.name, async r => {
-				r = r[these.name]
-				if (r) {
-					these.redirects = r[these.redirects]
-					these.enable = r[these.enable]
-					these.frontend = r[these.frontend]
-					these.protocol = r[these.protocol]
-					these.name = r[these.name]
-					these.protocolFallback = r[these.protocolFallback]
-				} else {
-					await these.initDefaults()
-					init()
-				}
-				resolve()
-			})
-		)
+	let setVar = (key, value) => {
+		browser.storage.local.get(these.name, r => {
+			let frontend = r[these.name]
+			frontend[key] = value
+			browser.storage.local.set({ [these.name]: frontend })
+		})
 	}
 
 	these.initDefaults = () => {
@@ -87,7 +102,7 @@ export async function FrontEnd({ name, enable, frontends, frontend, redirect, re
 		})
 	}
 
-	these.unify = from => {
+	these.unify = (from, tabId) => {
 		return new Promise(async resolve => {
 			const protocolHost = utils.protocolHost(from)
 			const list = these.redirects[these.frontend][these.protocol]
@@ -95,8 +110,38 @@ export async function FrontEnd({ name, enable, frontends, frontend, redirect, re
 				resolve()
 				return
 			}
-			for (const cookie of these.redirects[these.frontend].cookies) {
-				await utils.copyCookie(frontend, protocolHost, [...list.checked, list.custom], cookie)
+			for (const cookie of these.cookies[these.frontend]) {
+				await utils.copyCookie(protocolHost, [...list.checked, list.custom], cookie)
+			}
+
+			if (these.localStorage[these.frontend]) {
+				await new Promise(resolve => {
+					browser.storage.local.set({ tmp_get_list: these.localStorage[these.frontend] }, () => {
+						browser.tabs.executeScript(
+							tabId,
+							{
+								file: "/assets/javascripts/localStorage/get.js",
+								runAt: "document_start",
+							},
+							() => {
+								for (const to of [...list.checked, list.custom]) {
+									browser.tabs.create({ url: to }, tab =>
+										browser.tabs.executeScript(
+											tab.id,
+											{
+												file: "/assets/javascripts/localStorage/set.js",
+												runAt: "document_start",
+											},
+											() => {
+												resolve()
+											}
+										)
+									)
+								}
+							}
+						)
+					})
+				})
 			}
 			resolve(true)
 		})
@@ -142,8 +187,23 @@ export async function FrontEnd({ name, enable, frontends, frontend, redirect, re
 		return reverse(url)
 	}
 
-	await init()
-	browser.storage.onChanged.addListener(init)
+	await new Promise(async resolve =>
+		browser.storage.local.get(these.name, async r => {
+			r = r[these.name]
+			if (r) {
+				these.redirects = r[these.redirects]
+				these.enable = r[these.enable]
+				these.frontend = r[these.frontend]
+				these.protocol = r[these.protocol]
+				these.name = r[these.name]
+				these.protocolFallback = r[these.protocolFallback]
+			} else {
+				await these.initDefaults()
+				await init()
+			}
+			resolve()
+		})
+	)
 
 	return these
 }

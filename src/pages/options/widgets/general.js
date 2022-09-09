@@ -159,8 +159,6 @@ for (const frontend of generalHelper.allPopupFrontends)
 		browser.storage.local.set({ popupFrontends })
 	})
 
-// const firstPartyIsolate = document.getElementById('firstPartyIsolate');
-// firstPartyIsolate.addEventListener("change", () => browser.storage.local.set({ firstPartyIsolate: firstPartyIsolate.checked }))
 
 browser.storage.local.get(
 	[
@@ -170,7 +168,6 @@ browser.storage.local.get(
 		"protocol",
 		"protocolFallback",
 		"latencyThreshold",
-		// 'firstPartyIsolate'
 	],
 	r => {
 		autoRedirectElement.checked = r.autoRedirect
@@ -178,7 +175,6 @@ browser.storage.local.get(
 		protocolElement.value = r.protocol
 		protocolFallbackCheckbox.checked = r.protocolFallback
 		latencyOutput.value = r.latencyThreshold
-		// firstPartyIsolate.checked = r.firstPartyIsolate;
 
 		let protocolFallbackElement = document.getElementById("protocol-fallback")
 		if (protocolElement.value == "normal") {

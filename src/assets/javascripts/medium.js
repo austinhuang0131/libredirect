@@ -8,12 +8,7 @@ import { FrontEnd } from "./frontend.js"
 export default await FrontEnd({
 	enable: true,
 	name: "medium",
-	frontends: {
-		scribe: {
-			cookies: [],
-		},
-	},
-	frontend: "scribe",
+	frontends: ["scribe"],
 	redirect: (url, type) => {
 		const targets = [
 			// /(?:.*\.)*(?<!(link\.|cdn\-images\-\d+\.))medium\.com(\/.*)?$/,

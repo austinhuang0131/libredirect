@@ -29,7 +29,6 @@ async function initDefaults() {
 				theme: "DEFAULT",
 				popupFrontends: ["youtube", "twitter", "instagram", "tiktok", "imgur", "reddit", "quora", "translate", "maps"],
 				autoRedirect: false,
-				firstPartyIsolate: false,
 				protocol: "normal",
 				protocolFallback: true,
 				latencyThreshold: 1000,
