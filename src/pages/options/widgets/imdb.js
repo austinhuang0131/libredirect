@@ -1,5 +1,7 @@
 import utils from "../../../assets/javascripts/utils.js"
 
+import Imdb from "../../../assets/javascripts/imdb.js"
+
 // UNCOMMENT ALL COMMENTS ONCE OTHER FRONTENDS EXIST
 
 const frontends = new Array("libremdb")
@@ -23,20 +25,6 @@ function changeFrontendsSettings() {
 }
 */
 
-function changeProtocolSettings() {
-	for (let i = 0; i < frontends.length; i++) {
-		const frontendDiv = document.getElementById(frontends[i])
-		for (let x = 0; x < protocols.length; x++) {
-			const protocolDiv = frontendDiv.getElementsByClassName(protocols[x])[0]
-			if (protocols[x] == protocol) {
-				protocolDiv.style.display = "block"
-			} else {
-				protocolDiv.style.display = "none"
-			}
-		}
-	}
-}
-
 browser.storage.local.get(["disableImdb", "protocol"], r => {
 	enable.checked = !r.disableImdb
 	protocol = r.protocol
@@ -53,3 +41,17 @@ for (let i = 0; i < frontends.length; i++) {
 	}
 	utils.latency("imdb", frontends[i], document, location)
 }
+
+// function changeProtocolSettings() {
+// 	for (let i = 0; i < frontend.frontends.length; i++) {
+// 		const frontendDiv = document.getElementById(frontend.frontends[i])
+// 		for (let x = 0; x < protocols.length; x++) {
+// 			const protocolDiv = frontendDiv.getElementsByClassName(protocols[x])[0]
+// 			if (protocols[x] == protocol) {
+// 				protocolDiv.style.display = "block"
+// 			} else {
+// 				protocolDiv.style.display = "none"
+// 			}
+// 		}
+// 	}
+// }

@@ -4,13 +4,13 @@ window.browser = window.browser || window.chrome
 import utils from "../../assets/javascripts/utils.js"
 import generalHelper from "../../assets/javascripts/general.js"
 
-import Youtube from "../../assets/javascripts/youtube/youtube.js"
+import Youtube from "../../assets/javascripts/youtube.js"
 import YoutubeMusic from "../../assets/javascripts/youtubeMusic.js"
 import Twitter from "../../assets/javascripts/twitter.js"
 import Instagram from "../../assets/javascripts/instagram.js"
 import Reddit from "../../assets/javascripts/reddit.js"
 import Search from "../../assets/javascripts/search.js"
-import Translate from "../../assets/javascripts/translate/translate.js"
+import Translate from "../../assets/javascripts/translate.js"
 import Maps from "../../assets/javascripts/maps.js"
 import Wikipedia from "../../assets/javascripts/wikipedia.js"
 import Medium from "../../assets/javascripts/medium.js"
@@ -93,12 +93,8 @@ for (const frontend of frontends) {
 	allElement(frontend.name).checked = frontend.enable
 	curentElement(frontend.name).checked = frontend.enable
 
-	curentElement(frontend.name).addEventListener("change", () => {
-		frontend.enable = curentElement(frontend.name).checked
-	})
-	allElement(frontend.name).addEventListener("change", () => {
-		frontend.enable = allElement(frontend.name).checked
-	})
+	curentElement(frontend.name).addEventListener("change", () => frontend.setEnable(curentElement(frontend.name).checked))
+	allElement(frontend.name).addEventListener("change", () => frontend.setEnable(allElement(frontend.name).checked))
 }
 
 for (const a of document.getElementsByTagName("a")) {

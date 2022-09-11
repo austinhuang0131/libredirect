@@ -5,52 +5,39 @@ window.browser = window.browser || window.chrome
 import utils from "./utils.js"
 
 export async function FrontEnd({ name, enable, frontends, redirect, reverse, cookies, localStorage }) {
-	let these = {
-		enable: enable,
-		redirects: {},
-		frontend: frontends[0],
-		protocol: "normal",
-		protocolFallback: true,
-		redirectType: "both",
-		name: name,
-		cookies: cookies ?? [],
-		localStorage: localStorage ?? [],
-		set enable(val) {
-			these.enable = val
-			setVar("enable", val)
-		},
-		set frontend(val) {
-			these.frontend = val
-			setVar("frontend", val)
-		},
-		set protocol(val) {
-			these.protocol = val
-			setVar("protocol", val)
-		},
-		set protocolFallback(val) {
-			these.protocolFallback = val
-			setVar("protocolFallback", val)
-		},
-		set redirectType(val) {
-			these.redirectType = val
-			setVar("redirectType", val)
-		},
-		set redirects(val) {
-			these.redirects = val
-			setVar("redirects", val)
-		},
-	}
+	let these = {}
 
-	let setVar = (key, value) => {
-		browser.storage.local.get(these.name, r => {
-			let frontend = r[these.name]
-			frontend[key] = value
-			browser.storage.local.set({ [these.name]: frontend })
-		})
+	these.enable = enable
+	these.redirects = {}
+	these.frontend = frontends[0]
+	these.network = "normal"
+	these.protocolFallback = true
+	these.redirectType = "both"
+	these.name = name
+	these.cookies = cookies ?? []
+	these.localStorage = localStorage ?? []
+	these.setEnable = val => {
+		these.enable = val
+		setVar("enable", val)
 	}
-
-	these.initDefaults = () => {
-		return new Promise(resolve => {
+	these.setFrontend = val => {
+		these.frontend = val
+		setVar("frontend", val)
+	}
+	these.setNetwork = val => {
+		these.network = val
+		setVar("network", val)
+	}
+	these.setProtocolFallback = val => {
+		these.protocolFallback = val
+		setVar("protocolFallback", val)
+	}
+	these.setRedirectType = val => {
+		these.redirectType = val
+		setVar("redirectType", val)
+	}
+	these.initDefaults = () =>
+		new Promise(resolve => {
 			fetch("/instances/data.json")
 				.then(response => response.text())
 				.then(list =>
@@ -59,59 +46,24 @@ export async function FrontEnd({ name, enable, frontends, redirect, reverse, coo
 						.then(blackList => these.setRedirects(JSON.parse(list), JSON.parse(blackList)).then(() => resolve()))
 				)
 		})
-	}
-
-	these.setRedirects = (list, blackList) => {
-		return new Promise(resolve => {
-			for (const frontend in frontends) {
-				these.redirects[frontend] = {}
-
-				these.redirects[frontend].cookies = [...frontends[frontend].cookies]
-
-				for (const protocol in list[frontend]) {
-					these.redirects[frontend][protocol] = {}
-
-					these.redirects[frontend][protocol].all = [...list[frontend][protocol]]
-
-					these.redirects[frontend][protocol].custom = []
-
-					these.redirects[frontend][protocol].checked = [...list[frontend][protocol]]
-					for (const instance of blackList.cloudflare) {
-						const a = these.redirects[frontend][protocol].checked.indexOf(instance)
-						if (a > -1) these.redirects[frontend][protocol].checked.splice(a, 1)
-					}
-					for (const instance of blackList.offline) {
-						const a = these.redirects[frontend][protocol].checked.indexOf(instance)
-						if (a > -1) these.redirects[frontend][protocol].checked.splice(a, 1)
-					}
-				}
-			}
-			browser.storage.local.set(
-				{
-					[these.name]: {
-						[these.redirects]: these.redirects,
-						[these.enable]: these.enable,
-						[these.frontend]: these.frontend,
-						[these.protocol]: these.protocol,
-						[these.name]: these.name,
-						[these.protocolFallback]: these.protocolFallback,
-					},
-				},
-				() => resolve()
-			)
-		})
-	}
-
-	these.unify = (from, tabId) => {
-		return new Promise(async resolve => {
+	these.unify = (from, tabId, test) =>
+		new Promise(async resolve => {
 			const protocolHost = utils.protocolHost(from)
-			const list = these.redirects[these.frontend][these.protocol]
+			const list = these.redirects[these.frontend][these.network]
 			if (![...list.checked, ...list.custom].includes(protocolHost)) {
 				resolve()
 				return
 			}
-			for (const cookie of these.cookies[these.frontend]) {
-				await utils.copyCookie(protocolHost, [...list.checked, list.custom], cookie)
+
+			if (test && (these.cookies[these.frontend] || these.localStorage[these.frontend])) {
+				resolve(true)
+				return
+			}
+
+			if (these.cookies[these.frontend]) {
+				for (const cookie of these.cookies[these.frontend]) {
+					await utils.copyCookie(protocolHost, [...list.checked, list.custom], cookie)
+				}
 			}
 
 			if (these.localStorage[these.frontend]) {
@@ -145,14 +97,50 @@ export async function FrontEnd({ name, enable, frontends, redirect, reverse, coo
 			}
 			resolve(true)
 		})
-	}
+	these.setRedirects = (list, blackList) => {
+		return new Promise(resolve => {
+			for (const frontend in frontends) {
+				these.redirects[frontend] = {}
 
-	these.switch = (url, disableOverride) => {
+				for (const network in list[frontend]) {
+					these.redirects[frontend][network] = {}
+
+					these.redirects[frontend][network].all = [...list[frontend][network]]
+
+					these.redirects[frontend][network].custom = []
+
+					these.redirects[frontend][network].checked = [...list[frontend][network]]
+					for (const instance of blackList.cloudflare) {
+						const a = these.redirects[frontend][network].checked.indexOf(instance)
+						if (a > -1) these.redirects[frontend][network].checked.splice(a, 1)
+					}
+					for (const instance of blackList.offline) {
+						const a = these.redirects[frontend][network].checked.indexOf(instance)
+						if (a > -1) these.redirects[frontend][network].checked.splice(a, 1)
+					}
+				}
+			}
+			browser.storage.local.set(
+				{
+					[these.name]: {
+						[these.redirects]: these.redirects,
+						[these.enable]: these.enable,
+						[these.frontend]: these.frontend,
+						[these.network]: these.network,
+						[these.name]: these.name,
+						[these.protocolFallback]: these.protocolFallback,
+					},
+				},
+				() => resolve()
+			)
+		})
+	}
+	these.switch = (url, test) => {
 		if (!these.enable && !disableOverride) return
 
 		const protocolHost = utils.protocolHost(url)
 
-		const list = these.redirects[these.frontend][these.protocol]
+		const list = these.redirects[these.frontend][these.network]
 		if (!list.all.includes(protocolHost)) return
 
 		let userList = [...list.checked, ...list.custom]
@@ -165,45 +153,53 @@ export async function FrontEnd({ name, enable, frontends, redirect, reverse, coo
 		const randomInstance = utils.getRandomInstance(userList)
 		return `${randomInstance}${url.pathname}${url.search}`
 	}
-
 	these.redirect = (url, type, initiator, disableOverride) => {
 		if (!these.enable && !disableOverride) return
-		if (initiator && these.redirects[these.frontend][these.protocol].all.includes(initiator.origin)) return "BYPASSTAB"
+		if (initiator && these.redirects[these.frontend][these.network].all.includes(initiator.origin)) return "BYPASSTAB"
 		const result = redirect(url, type, these.frontend, these.redirectType)
 		if (result == "SKIP") return "SKIP"
 		if (result) {
-			const list = these.redirects[these.frontend][these.protocol]
+			const list = these.redirects[these.frontend][these.network]
 			const userList = [...list.checked, ...list.custom]
 			const randomInstance = utils.getRandomInstance(userList)
 			const url = new URL(result)
 			return `${randomInstance}${url.pathname}${url.search}`
 		}
 	}
-
-	this.reverse = url => {
+	these.reverse = url => {
 		const protocolHost = utils.protocolHost(url)
-		const list = these.redirects[these.frontend][these.protocol]
+		const list = these.redirects[these.frontend][these.network]
 		if (!list.all.includes(protocolHost)) return
 		return reverse(url)
 	}
 
-	await new Promise(async resolve =>
-		browser.storage.local.get(these.name, async r => {
-			r = r[these.name]
-			if (r) {
-				these.redirects = r[these.redirects]
-				these.enable = r[these.enable]
-				these.frontend = r[these.frontend]
-				these.protocol = r[these.protocol]
-				these.name = r[these.name]
-				these.protocolFallback = r[these.protocolFallback]
-			} else {
-				await these.initDefaults()
-				await init()
-			}
-			resolve()
+	let setVar = (key, value) => {
+		browser.storage.local.get(these.name, r => {
+			let frontend = r[these.name]
+			frontend[key] = value
+			browser.storage.local.set({ [these.name]: frontend })
 		})
-	)
+	}
+
+	function init() {
+		return new Promise(async resolve =>
+			browser.storage.local.get(these.name, async r => {
+				r = r[these.name]
+				if (r) {
+					these.redirects = r[these.redirects]
+					these.enable = r[these.enable]
+					these.frontend = r[these.frontend]
+					these.network = r[these.network]
+					these.name = r[these.name]
+					these.protocolFallback = r[these.protocolFallback]
+				} else {
+					await these.initDefaults()
+					await init()
+				}
+				resolve()
+			})
+		)
+	}
 
 	return these
 }

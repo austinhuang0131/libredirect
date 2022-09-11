@@ -1,23 +1,5 @@
 window.browser = window.browser || window.chrome
-import Twitter from "./twitter.js"
-import Youtube from "./youtube.js"
-import Instagram from "./instagram.js"
-import Medium from "./medium.js"
-import Reddit from "./reddit.js"
-import Search from "./search.js"
-import Translate from "./translate.js"
-import Wikipedia from "./wikipedia.js"
-import Peertube from "./peertube.js"
-import Lbry from "./lbry.js"
-import SendTargets from "./sendTargets.js"
-import Tiktok from "./tiktok.js"
-import Quora from "./quora.js"
-import Imdb from "./imdb.js"
-import Imgur from "./imgur.js"
-import Reuters from "./reuters.js"
-import YoutubeMusic from "./youtubeMusic.js"
-import Maps from "./maps.js"
-import localise from "./localise.js"
+import { frontends } from "./frontends.js"
 
 function getRandomInstance(instances) {
 	return instances[~~(instances.length * Math.random())]
@@ -91,40 +73,10 @@ function updateInstances() {
 		const blackList = await updateBlackList()
 		const list = JSON.parse(http.responseText)
 
-		await youtubeHelper.setRedirects(list, blackList)
+		for (const frontend of frontends) {
+			await frontend.setRedirects(list, blackList)
+		}
 
-		await twitterHelper.setRedirects(instances.nitter)
-		await instagramHelper.setRedirects(instances.bibliogram)
-		await Reddit.setRedirects({
-			list: instances,
-			blackList: blackList,
-		})
-		await translateHelper.setRedirects({
-			simplyTranslate: instances.simplyTranslate,
-			lingva: instances.lingva,
-		})
-		await searchHelper.setRedirects({
-			searx: instances.searx,
-			searxng: instances.searxng,
-			whoogle: instances.whoogle,
-			librex: instances.librex,
-		})
-		await wikipediaHelper.setRedirects(instances.wikiless)
-		await mediumHelper.setRedirects(instances.scribe)
-		await quoraHelper.setRedirects(instances.quetre)
-		await libremdbHelper.setRedirects(instances.libremdb)
-		await sendTargetsHelper.setRedirects(instances.send)
-		await tiktokHelper.setRedirects(instances.proxiTok)
-		await lbryHelper.setRedirects(instances.librarian)
-		await reutersHelper.setRedirects(instances.neuters)
-		await youtubeMusicHelper.setRedirects({
-			beatbump: instances.beatbump,
-			hyperpipe: instances.hyperpipe,
-		})
-		await mapsHelper.setRedirects(instances.facil)
-		await peertubeHelper.setRedirects(instances.simpleertube)
-
-		console.info("Successfully updated Instances")
 		resolve(true)
 		return
 	})
@@ -322,7 +274,7 @@ function pingOnce(href) {
 	})
 }
 
-async function testLatency(element, instances, frontend) {
+function testLatency(element, instances, frontend) {
 	return new Promise(async resolve => {
 		let myList = {}
 		let latencyThreshold
@@ -364,7 +316,7 @@ function copyCookie(targetUrl, urls, name) {
 				url: protocolHost(targetUrl),
 				name: name,
 			},
-			async cookies => {
+			cookies => {
 				for (const cookie of cookies) {
 					if (cookie.name == name) {
 						for (const url of urls) {
@@ -399,7 +351,7 @@ function copyRaw(test, copyRawElement) {
 				}
 
 				let newUrl
-				for (const frontend of [Youtube, Twitter, Instagram, Tiktok, Quora, Imdb, Imgur]) {
+				for (const frontend of frontends) {
 					if (!newUrl) newUrl = await frontend.reverse(url)
 				}
 
@@ -434,7 +386,7 @@ function unify(test) {
 				}
 
 				let result
-				for (const frontend of [Youtube, Twitter, Reddit, Search, Tiktok, Wikipedia, Translate, Instagram]) {
+				for (const frontend of frontends) {
 					if (!result) result = await frontend.unify(url, currTab.id, test)
 				}
 
@@ -458,7 +410,7 @@ function switchInstance(test) {
 				}
 
 				let newUrl
-				for (const frontend of [Youtube, YoutubeMusic, Twitter, Instagram, Reddit, Search, Translate, Maps, Wikipedia, Medium, Quora, Imdb, Reuters, Imgur, Tiktok, SendTargets, Peertube, Lbry]) {
+				for (const frontend of frontends) {
 					if (!newUrl) newUrl = frontend.switch(url, true)
 				}
 
